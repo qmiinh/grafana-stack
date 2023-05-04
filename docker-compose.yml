@@ -1,0 +1,147 @@
+version: '3.4'
+services:
+  minio:
+    image: minio/minio:RELEASE.2023-04-28T18-11-17Z
+    entrypoint: [""]
+    command: ["sh", "-c", "mkdir -p /data/mimir && minio server --quiet /data"]
+    environment:
+      - MINIO_ROOT_USER=mimir
+      - MINIO_ROOT_PASSWORD=supersecret
+    volumes:
+      - ./data/minio-data:/data
+
+  loki:
+    image: grafana/loki:2.6.1
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  # avalanche:
+  #   image: quay.io/freshtracks.io/avalanche:latest
+  #   command:
+  #     - --metric-count=3000
+  #     - --series-interval=3600
+  #     - --metric-interval=7200
+  #   ports:
+  #     - "9001:9001"
+
+  agent:
+    image: grafana/agent:v0.33.1
+    volumes:
+      - ./agent:/etc/agent-config
+      - log-nginx:/var/log/nginx
+      # - /proc:/host/proc:ro,rslave
+      # - /sys:/host/sys:ro,rslave
+      # - /:/host/root:ro,rslave
+    entrypoint:
+      - /bin/grafana-agent
+      - -server.http.address=0.0.0.0:12345
+      - -config.file=/etc/agent-config/agent.yaml
+      - -metrics.wal-directory=/tmp/agent/wal
+      - -config.expand-env
+      - -config.enable-read-api
+    cap_add:
+      - SYS_TIME
+    pid: "host"
+    environment:
+      HOSTNAME: agent
+      REMOTE_WRITE_HOST: load-balancer:9009
+      LOKI_HOST: load-balancer:9007
+      TEMPO_HOST: load-balancer:9008
+      # AVALANCHE_HOST: avalanche:9001
+      # MYSQL_HOST: mysql:3306
+      # POSTGRES_HOST: postgres:5432
+      # REDIS_HOST: redis:6379
+      # DNSMASQ_HOST: dnsmasq:53
+      # MEMCACHED_HOST: memcached:11211
+      # CONSUL_HOST: consul:8500
+      # ELASTICSEARCH_HOST: elasticsearch:9200
+      # KAFKA_HOST: kafka:9093
+      # MONGODB_HOST: mongodb:27017
+    ports:
+      - "12345:12345"
+    depends_on:
+      - load-balancer
+      - loki
+      - tempo
+
+  tempo:
+    image: grafana/tempo:1.5.0
+    command:
+      - "-search.enabled=true"
+      - "-storage.trace.backend=local"                  # tell tempo where to permanently put traces
+      - "-storage.trace.local.path=/tmp/tempo/traces"
+      - "-storage.trace.wal.path=/tmp/tempo/wal"        # tell tempo where to store the wal
+      - "-auth.enabled=false"                           # disables the requirement for the X-Scope-OrgID header
+      - "-server.http-listen-port=3200"
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+
+  grafana:
+    image: grafana/grafana:9.5.1-ubuntu
+    pull_policy: always
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_USERS_DEFAULT_THEME=light
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=critical
+    volumes:
+      - ./config/grafana-provisioning-dashboards.yaml:/etc/grafana/provisioning/dashboards/provisioning-dashboards.yaml:ro
+      - ./config/grafana-provisioning-datasources.yaml:/etc/grafana/provisioning/datasources/provisioning-datasources.yaml:ro
+      # Explicitly list the dashboards we want to show in the demo. We intentionally exclude dashboards that require
+      # Kubernetes metrics (eg. resources or networking) and other services not available in the demo (eg. Grafana Loki).
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - 9000:3000
+
+  load-balancer:
+    image: nginx:1.24
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - log-nginx:/var/log/nginx
+    depends_on:
+      - "mimir-1"
+      - "mimir-2"
+      - "mimir-3"
+    ports:
+      - 9009:9009
+      - 9008:9008
+      - 9007:9007
+
+  mimir-1:
+    image: grafana/mimir:2.8.0
+    command: ["-config.file=/etc/mimir.yaml"]
+    hostname: mimir-1
+    depends_on:
+      - minio
+    volumes:
+      - ./config/mimir.yaml:/etc/mimir.yaml
+      - ./config/alertmanager-fallback-config.yaml:/etc/alertmanager-fallback-config.yaml
+      - ./data/mimir-1-data:/data
+
+  mimir-2:
+    image: grafana/mimir:2.8.0
+    command: ["-config.file=/etc/mimir.yaml"]
+    hostname: mimir-2
+    depends_on:
+      - minio
+    volumes:
+      - ./config/mimir.yaml:/etc/mimir.yaml
+      - ./config/alertmanager-fallback-config.yaml:/etc/alertmanager-fallback-config.yaml
+      - ./data/mimir-2-data:/data
+
+  mimir-3:
+    image: grafana/mimir:2.8.0
+    command: ["-config.file=/etc/mimir.yaml"]
+    hostname: mimir-3
+    depends_on:
+      - minio
+    volumes:
+      - ./config/mimir.yaml:/etc/mimir.yaml
+      - ./config/alertmanager-fallback-config.yaml:/etc/alertmanager-fallback-config.yaml
+      - ./data/mimir-3-data:/data
+
+volumes:
+  log-nginx:
