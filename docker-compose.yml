@@ -1,29 +1,30 @@
 version: '3.4'
 services:
+
   minio:
     image: minio/minio:RELEASE.2023-04-28T18-11-17Z
     entrypoint: [""]
-    command: ["sh", "-c", "mkdir -p /data/mimir && minio server --quiet /data"]
+    command: ['sh', '-c', 'mkdir -p /data/mimir && mkdir -p /data/tempo && mkdir -p /data/loki && mkdir -p /data/loki-ruler && minio server --quiet /data  --console-address ":9001"']
     environment:
       - MINIO_ROOT_USER=mimir
       - MINIO_ROOT_PASSWORD=supersecret
     volumes:
       - ./data/minio-data:/data
+    ports:
+      - "9005:9000"
+      - "9001:9001"
 
   loki:
     image: grafana/loki:2.6.1
     command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./data/loki:/loki
+      - ./config/loki.yaml:/etc/loki/local-config.yaml:ro
     ports:
       - "3100:3100"
-
-  # avalanche:
-  #   image: quay.io/freshtracks.io/avalanche:latest
-  #   command:
-  #     - --metric-count=3000
-  #     - --series-interval=3600
-  #     - --metric-interval=7200
-  #   ports:
-  #     - "9001:9001"
+    depends_on:
+      - load-balancer
+      - minio
 
   agent:
     image: grafana/agent:v0.33.1
@@ -36,6 +37,7 @@ services:
     entrypoint:
       - /bin/grafana-agent
       - -server.http.address=0.0.0.0:12345
+      - -server.grpc.address=0.0.0.0:12346
       - -config.file=/etc/agent-config/agent.yaml
       - -metrics.wal-directory=/tmp/agent/wal
       - -config.expand-env
@@ -47,7 +49,7 @@ services:
       HOSTNAME: agent
       REMOTE_WRITE_HOST: load-balancer:9009
       LOKI_HOST: load-balancer:9007
-      TEMPO_HOST: load-balancer:9008
+      TEMPO_HOST: tempo:4317
       # AVALANCHE_HOST: avalanche:9001
       # MYSQL_HOST: mysql:3306
       # POSTGRES_HOST: postgres:5432
@@ -60,6 +62,7 @@ services:
       # MONGODB_HOST: mongodb:27017
     ports:
       - "12345:12345"
+      - "4317:4317"
     depends_on:
       - load-balancer
       - loki
@@ -67,16 +70,27 @@ services:
 
   tempo:
     image: grafana/tempo:1.5.0
-    command:
-      - "-search.enabled=true"
-      - "-storage.trace.backend=local"                  # tell tempo where to permanently put traces
-      - "-storage.trace.local.path=/tmp/tempo/traces"
-      - "-storage.trace.wal.path=/tmp/tempo/wal"        # tell tempo where to store the wal
-      - "-auth.enabled=false"                           # disables the requirement for the X-Scope-OrgID header
-      - "-server.http-listen-port=3200"
+    command: [ "-config.file=/etc/tempo.yaml" ]
+      # - "-search.enabled=true"
+      # - "-storage.trace.backend=local"                  # tell tempo where to permanently put traces
+      # - "-storage.trace.local.path=/tmp/tempo/traces"
+      # - "-storage.trace.wal.path=/tmp/tempo/wal"        # tell tempo where to store the wal
+      # - "-auth.enabled=false"                           # disables the requirement for the X-Scope-OrgID header
+      # - "-server.http-listen-port=3200"
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+      - ./data/tempo:/tmp/tempo
     ports:
       - "3200:3200"
-      - "4317:4317"
+      # - "14268"  # jaeger ingest
+      # - "3200"   # tempo
+      # - "4317"  # otlp grpc
+      # - "4318"  # otlp http
+      # - "9411"   # zipkin
+
+    depends_on:
+      - load-balancer
+      - minio
 
   grafana:
     image: grafana/grafana:9.5.1-ubuntu
@@ -87,12 +101,14 @@ services:
       - GF_USERS_DEFAULT_THEME=light
       - GF_LOG_MODE=console
       - GF_LOG_LEVEL=critical
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
     volumes:
       - ./config/grafana-provisioning-dashboards.yaml:/etc/grafana/provisioning/dashboards/provisioning-dashboards.yaml:ro
       - ./config/grafana-provisioning-datasources.yaml:/etc/grafana/provisioning/datasources/provisioning-datasources.yaml:ro
       # Explicitly list the dashboards we want to show in the demo. We intentionally exclude dashboards that require
       # Kubernetes metrics (eg. resources or networking) and other services not available in the demo (eg. Grafana Loki).
       - ./dashboards:/var/lib/grafana/dashboards:ro
+      - ./config/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - 9000:3000
 
@@ -143,5 +159,27 @@ services:
       - ./config/alertmanager-fallback-config.yaml:/etc/alertmanager-fallback-config.yaml
       - ./data/mimir-3-data:/data
 
+  foo:
+    build:
+      context: ./foo-bar-app
+      dockerfile: Dockerfile-foo
+    ports:
+      - "5000:5000"
+    environment:
+      - BAR_ENDPOINT=http://bar:5000/bar
+      - AGENT_HOSTNAME=agent
+      - AGENT_PORT=4317
+    depends_on:
+      - agent
+
+  bar:
+    build:
+      context: ./foo-bar-app
+      dockerfile: Dockerfile-bar
+    environment:
+      - AGENT_HOSTNAME=agent
+      - AGENT_PORT=4317
+    depends_on:
+      - agent
 volumes:
   log-nginx:

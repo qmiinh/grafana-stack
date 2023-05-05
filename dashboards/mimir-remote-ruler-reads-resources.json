@@ -1017,7 +1017,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Remote ruler reads resources",
       "uid": "1940f6ef765a506a171faa2056c956c3",
       "version": 0

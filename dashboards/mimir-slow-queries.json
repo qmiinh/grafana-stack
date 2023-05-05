@@ -316,7 +316,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Slow queries",
       "uid": "6089e1ce1e678788f46312a0a1e647e6",
       "version": 0

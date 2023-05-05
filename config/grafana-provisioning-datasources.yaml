@@ -38,6 +38,12 @@ datasources:
     editable: false
     apiVersion: 1
     uid: tempo
+    jsonData:
+      httpMethod: GET
+      serviceMap:
+        datasourceUid: Mimir
+      nodeGraph:
+        enabled: true
   - name: Loki
     type: loki
     access: proxy 
