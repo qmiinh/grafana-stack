@@ -1506,7 +1506,7 @@
           "30d"
        ]
     },
-    "timezone": "",
+    "timezone": "Asia/Ho_Chi_Minh",
     "title": "Agent Prometheus Remote Write",
     "version": 0
  }

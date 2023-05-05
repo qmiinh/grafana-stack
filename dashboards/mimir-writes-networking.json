@@ -1149,7 +1149,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Writes networking",
       "uid": "978c1cb452585c96697a238eaac7fe2d",
       "version": 0

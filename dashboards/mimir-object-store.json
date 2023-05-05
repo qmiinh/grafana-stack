@@ -1035,7 +1035,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Object Store",
       "uid": "e1324ee2a434f4158c00a9ee279d3292",
       "version": 0

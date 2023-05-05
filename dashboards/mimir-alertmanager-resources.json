@@ -841,7 +841,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Alertmanager resources",
       "uid": "a6883fb22799ac74479c7db872451092",
       "version": 0

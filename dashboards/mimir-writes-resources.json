@@ -1390,7 +1390,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Writes resources",
       "uid": "bc9160e50b52e89e0e49c840fea3d379",
       "version": 0

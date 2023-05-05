@@ -2394,7 +2394,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Compactor",
       "uid": "1b3443aea86db629e6efdb7d05c53823",
       "version": 0

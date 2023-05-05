@@ -2169,7 +2169,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Reads networking",
       "uid": "54b2a0a4748b3bd1aefa92ce5559a1c2",
       "version": 0

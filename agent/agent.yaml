@@ -18,12 +18,12 @@
 # endpoint to examine the generated config.
 
 server:
-  log_level: debug
+  log_level: info
   log_format: json
 
 metrics:
   global:
-    scrape_interval: 60s
+    scrape_interval: 10s
     external_labels:
       cluster: demo
       namespace: demo
@@ -38,7 +38,7 @@ metrics:
     #   static_configs:
     #   - targets: ['${AVALANCHE_HOST:-localhost:9001}']
     - job_name: mimir
-      scrape_interval: 5s
+      scrape_interval: 10s
       static_configs:
       - targets: [ 'mimir-1:8080' ]
         labels:
@@ -50,11 +50,14 @@ metrics:
         labels:
           pod: 'mimir-3'
     - job_name: tempo
-      scrape_interval: 5s
+      scrape_interval: 10s
       static_configs:
       - targets: [ 'tempo:3200' ]
+        labels:
+          job: '(demo)/cortex-gw(-internal)'
+          route: 'api-test'
     - job_name: loki
-      scrape_interval: 5s
+      scrape_interval: 10s
       static_configs:
       - targets: [ 'loki:3100' ]
 
@@ -81,10 +84,21 @@ traces:
       - endpoint: ${TEMPO_HOST:-localhost:4317}
         insecure: true
     receivers:
-      jaeger:
+      jaeger:                            # the receives all come from the OpenTelemetry collector.  more configuration information can
+        protocols:                       # be found there: https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver
+          thrift_http:                   #
+          grpc:                          # for a production deployment you should only enable the receivers you need!
+          thrift_binary:
+          thrift_compact:
+      zipkin:
+      otlp:
         protocols:
-          thrift_http:
-
+          http:
+          grpc:
+      opencensus:
+    batch:
+      timeout: 5s
+      send_batch_size: 100
 #
 # Integrations
 #

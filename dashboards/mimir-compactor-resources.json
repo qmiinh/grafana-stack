@@ -948,7 +948,7 @@
             "30d"
          ]
       },
-      "timezone": "utc",
+  "timezone": "Asia/Ho_Chi_Minh",
       "title": "Mimir / Compactor resources",
       "uid": "09a5c49e9cdb2f2b24c6d184574a07fd",
       "version": 0
