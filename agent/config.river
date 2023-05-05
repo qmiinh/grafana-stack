@@ -1,0 +1,21 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+loki.source.syslog "local" {
+  listener {
+    address  = "0.0.0.0:514"
+    use_rfc5424_message = false
+    labels   = { component = "loki.source.syslog", protocol = "tcp" }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  external_labels = { filename = "python" }
+  endpoint {
+    url = "http://load-balancer:9007/loki/api/v1/push"
+  }
+}
