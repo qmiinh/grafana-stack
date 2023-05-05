@@ -67,6 +67,13 @@ services:
       - load-balancer
       - loki
       - tempo
+      - agent-flow
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "tcp://127.0.0.1:514"
+        syslog-format: "rfc5424micro"
+        tag: "agent"
 
   tempo:
     image: grafana/tempo:1.5.0
@@ -181,5 +188,20 @@ services:
       - AGENT_PORT=4317
     depends_on:
       - agent
+
+  agent-flow:
+    image: grafana/agent:v0.33.1
+    volumes:
+      - ./agent:/etc/agent-config
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12347
+      - /etc/agent-config/config.river
+    environment:
+      AGENT_MODE: flow
+    ports:
+      - "12347:12347"
+      - "514:514"
+
 volumes:
   log-nginx:
