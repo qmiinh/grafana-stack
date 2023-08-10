@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, Response
 from flask.logging import default_handler
 import requests
 from opentelemetry import trace
@@ -10,7 +10,9 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 import logging
 import os
-from random import random
+from prometheus_client import Counter, Gauge, start_http_server, generate_latest
+import logging
+import random
 from time import strftime
 
 AGENT_HOSTNAME = os.getenv("AGENT_HOSTNAME", "localhost")
@@ -51,6 +53,25 @@ default_handler.setFormatter(
     )
 )
 
+CONTENT_TYPE_LATEST = str('text/plain; version=0.0.4; charset=utf-8')
+
+number_of_requests = Counter(
+    'number_of_requests_foo',
+    'The number of requests, its a counter so the value can increase or reset to zero.'
+)
+
+current_memory_usage = Gauge(
+    'current_memory_usage_foo_locally',
+    'The current value of memory usage, its a gauge so it can go up or down.',
+    ['server_name']
+)
+
+@app.route('/metrics', methods=['GET'])
+def get_data():
+    """Returns all data as plaintext."""
+    number_of_requests.inc()
+    current_memory_usage.labels('foo').set(random.randint(10000,90000))
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 @app.route("/foo")
 def foo():

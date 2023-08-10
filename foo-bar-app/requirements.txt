@@ -5,3 +5,5 @@ opentelemetry-exporter-otlp==1.13.0
 opentelemetry-instrumentation-flask==0.34b0
 opentelemetry-instrumentation-requests==0.34b0
 requests==2.22.0
+pyroscope-io==0.7.1
+prometheus_client

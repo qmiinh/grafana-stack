@@ -60,6 +60,10 @@ metrics:
       scrape_interval: 10s
       static_configs:
       - targets: [ 'loki:3100' ]
+    - job_name: foobar
+      scrape_interval: 10s
+      static_configs:
+      - targets: [ 'foo:5000' ]
 
 logs:
   configs:
